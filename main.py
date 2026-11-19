@@ -66,6 +66,41 @@ removing the earned coupling in the no-refresh case and left alone:
 it trades low-g for high-g with no clear win, and the grid is a
 guess, not a measurement.
 
+Round 4 (this version) fixes the two measured failures of round 3.
+(a) Flat/stale page: round 3 scored 0.422 on the practice server
+(rank 1559/3164) because a history with NO refresh fell back to a
+~2x dilution while the first refresh really dilutes ~6x (tracked
+638 -> 3,868). The page's data dates from when it was FIRST seen,
+not the last read, so the catch-up jump now grows the power law
+from the first-seen time to the target (~5.5x on p00, ~6.0x on
+p01); the refresh is treated as certain once the catch-up growth
+exceeds 2x (a refresh is a growth-driven catch-up, not a clock coin
+flip); kappa for the first refresh is 0.95 (its joiners are all
+fresh players); and the spread is tightened for the committed
+single refresh (kappa sd 0.05, jump-size sd 0.15, fit floor 0.05).
+Practice proxy (calibrated to the server's 0.422 for round 3):
+0.413 -> 0.066. The flat path only fires with no refresh in the
+history, so rich final histories are byte-identical to round 3.
+(b) Saturating progression: the earned slope is fitted on a
+logistic (saturating) curve, so a linear extrapolation overshoots
+earned by a constant +0.46 logit over the 4.5-day horizon
+(measured on 18 synthetic finals; the true slope falls 0.63 ->
+0.20 across the horizon). The slope now decays exponentially past
+the window. The decay rate is deliberately HALF the fitted value
+(SAT_DECAY = 0.5/log-hour, not 1.5): a second generator family
+(bench.py's cohort worlds, where new players keep arriving and
+the aggregate progression saturates slowly) is HURT by the full
+decay -- at 1.5 it loses to the trend baseline in all 5 worlds
+(0.245-0.277 vs trend 0.221-0.240), while at 0.5 it still beats
+trend in all 5 (0.188-0.218). The real final is a mix of both
+families, so 0.5 is the minimax-regret choice: synthetic finals
+improve from mean 0.372 / worst 0.584 to mean 0.338 / worst
+0.498 (tuning suite) and 0.321 / 0.474 (fresh suite, seeds 4-6),
+still beating trend (1.576) and flat (2.052) in all 18 cases.
+At the full decay (1.5) the logistic worlds would reach 0.312 /
+0.403 and 0.314 / 0.425, but the cohort gate risk is not worth
+the extra 0.026.
+
 Standard library only. Deterministic: no randomness, no wall clock, every
 number comes from the case file, so two runs write identical bytes.
 """
@@ -116,6 +151,23 @@ SPREAD_MAX = 2.5
 SD_KAPPA = 0.20
 SD_LOGJUMP = 0.12
 KAPPA_DEFAULT = 0.7
+# Round 4 (flat/stale page): when the history shows NO refresh at all, the
+# next refresh is the FIRST one after launch, and its joiners are almost
+# all brand-new players who have not earned the rare trophies yet, so the
+# dilution is nearly complete (kappa near 1). The 0.7 default is the
+# average over later refreshes, where joiners are a mix of new and
+# returning players; it under-dilutes the first refresh by ~2x.
+KAPPA_FLAT = 0.95
+# Round 4 (flat spread): once the refresh is committed (p=1) on a flat
+# page, the dilution uncertainty is far smaller than the general case.
+# kappa for the FIRST refresh is tightly near 1 (every joiner is a fresh
+# player who has not earned the rare trophies), the jump is a single
+# event (no jump-count uncertainty, only its size, ~0.15 logit for the
+# power-law estimate), and the earned fit on a frozen page has ~zero
+# residual, so the 0.20 fit floor is pure conservatism here.
+SD_KAPPA_FLAT = 0.05
+JUMP_SD_FLAT = 0.15
+SPREAD_FIT_FLOOR_FLAT = 0.05
 LOG_GROWTH_CAP = 6.0
 # Spread scale (round 3): the branch-B sigma is multiplied by this before
 # clamping. Tuned for the minimax over both synthetic suites: 1.0 gives
@@ -126,6 +178,13 @@ LOG_GROWTH_CAP = 6.0
 # that a narrower-than-1.0 spread wins on average; the worst case is
 # set by its median error, which the spread barely moves.
 SPREAD_SCALE = 0.9
+# Round 4 (saturation): the earned slope decays past the window.
+# SAT_DECAY is the decay rate per log-hour; 0 = no decay (round 3).
+SAT_DECAY = 0.5
+
+# Debug hook (round 4): internals of the last forecast_case call,
+# populated only when MAKEFUN_DEBUG=1. Never affects the forecast.
+LAST_DEBUG = {}
 
 
 def parse_ts(text):
@@ -196,6 +255,14 @@ def lin_fit(xs, ys):
     return (my - b * mx, b)
 
 
+def sat_growth(b, du):
+    """Earned-growth exponent for slope b over du log-hours, with the
+    slope decaying exponentially past the window (saturation)."""
+    if SAT_DECAY <= 0 or du <= 0:
+        return b * du
+    return b * (1.0 - math.exp(-SAT_DECAY * du)) / SAT_DECAY
+
+
 def log_hours(t, release):
     """log(1 + hours since release), floored at 0 for pre-release reads."""
     hours = (t - release).total_seconds() / 3600.0
@@ -229,6 +296,11 @@ def forecast_case(case):
 
     # Refresh clock: how long the page has sat unchanged, and the interval
     # between the refreshes the history itself shows.
+    # Round 4: a flat page (tracked unchanged in every read) has been
+    # frozen since the FIRST read, not the last one -- the last read is
+    # just another look at the same stale page. Its data age is the
+    # first-seen time, and it is overdue by the whole observed freeze.
+    flat_page = len({tr for _, tr, _ in states}) == 1
     if len(states) > 1:
         stale_h = (checkpoint - states[-1][0]).total_seconds() / 3600.0
         gaps = [(states[i + 1][0] - states[i][0]).total_seconds() / 3600.0
@@ -237,6 +309,10 @@ def forecast_case(case):
     else:
         stale_h = (checkpoint - states[0][0]).total_seconds() / 3600.0
         tau = REFRESH_INTERVAL_PRIOR_H
+    if flat_page:
+        stale_h = (checkpoint - states[0][0]).total_seconds() / 3600.0
+    t_data_h = max(0.0, (states[0][0] - release).total_seconds() / 3600.0)
+    t_target_h = max(0.0, (parse_ts(case["target"]) - release).total_seconds() / 3600.0)
     launch_age_h = max(0.0, (checkpoint - release).total_seconds() / 3600.0)
     # Refreshes are huge on launch night and settle down later.
     maturity = 1.0 / (1.0 + max(0.0, launch_age_h - 12.0) / 24.0)
@@ -323,13 +399,24 @@ def forecast_case(case):
     if use_events:
         jump = min(JUMP_CAP, max(0.0, g_n * tau))
     else:
-        jump = (LAUNCH_GROWTH * maturity *
-                math.log((1.0 + t_last_refresh_h + tau) /
-                         (1.0 + t_last_refresh_h)))
+        # No refresh seen: the page's data dates from when it was first
+        # seen (t_data_h, ~launch on a frozen page) and the next refresh
+        # carries it to the target. The power law already flattens with
+        # age, so no separate maturity factor is needed.
+        jump = (LAUNCH_GROWTH *
+                math.log((1.0 + t_target_h) / (1.0 + t_data_h)))
         jump = min(JUMP_CAP, max(0.0, jump))
     # Probability a refresh lands before the target.
     remaining = max(0.0, tau - stale_h)
     p_refresh = 1.0 if remaining <= 0 else min(1.0, horizon_h / max(0.5, remaining))
+    # Round 4: on a flat page the refresh is not a clock coin flip but a
+    # catch-up event driven by player growth. Once the player base has
+    # more than doubled since the page's data time (jump >= ln 2), the
+    # page is long past any refresh trigger and the refresh is certain
+    # before a target that far out. This only ever fires when the history
+    # shows no refresh at all, so a rich final history is untouched.
+    if not events and jump >= math.log(2.0):
+        p_refresh = 1.0
 
     # --- kappa: how much of a tracked jump dilutes the rate. At a
     # refresh the rate drops by prog - kappa*log(N_new/N_old); the
@@ -360,7 +447,7 @@ def forecast_case(case):
         if kappas:
             kappa_hat = median(kappas)
     if kappa_hat is None:
-        kappa_hat = KAPPA_DEFAULT
+        kappa_hat = KAPPA_FLAT if not events else KAPPA_DEFAULT
     coupl = 1.0 - kappa_hat  # earned grows with tracked^(1-kappa)
 
     # --- earned: recent progression slope per trophy, shrunk toward the
@@ -436,12 +523,12 @@ def forecast_case(case):
                 base_b = pool_b if pool_b is not None else b
                 b_used = min(3.0, max(0.0, w * b + (1.0 - w) * base_b))
                 u_obs, ln_e_obs = earned_last[j]
-                e_prog = math.exp(ln_e_obs + b_used * (target_u - u_obs))
+                e_prog = math.exp(ln_e_obs + sat_growth(b_used, target_u - u_obs))
             elif j in earned_last and pool_b is not None:
                 u_obs, ln_e_obs = earned_last[j]
-                e_prog = math.exp(ln_e_obs + pool_b * (target_u - u_obs))
+                e_prog = math.exp(ln_e_obs + sat_growth(pool_b, target_u - u_obs))
             elif pool_b is not None:
-                e_prog = anchor * math.exp(max(0.0, pool_b * (target_u - u_last)))
+                e_prog = anchor * math.exp(max(0.0, sat_growth(pool_b, target_u - u_last)))
             else:
                 e_prog = anchor * (1.0 + 0.02 * horizon_d)
             # Add back the part of earned growth that follows the
@@ -459,10 +546,19 @@ def forecast_case(case):
         # spread at the final horizon; the fit residual and horizon
         # terms are small beside it.
         g_log = math.log(max(1.0, t_branch) / max(1.0, last_tracked))
-        n_ref = max(1.0, horizon_h / max(1.0, tau))
-        sd_g = math.sqrt(n_ref) * SD_LOGJUMP
-        sigma_dil = math.sqrt((g_log * SD_KAPPA) ** 2 + (kappa_hat * sd_g) ** 2)
-        sigma_b = math.sqrt(max(SPREAD_FIT_FLOOR, fit_sd) ** 2 +
+        if flat_page and not events:
+            # Committed single refresh on a frozen page: kappa is
+            # tightly known and there is no jump-count uncertainty,
+            # only the jump's size.
+            sigma_dil = math.sqrt((g_log * SD_KAPPA_FLAT) ** 2 +
+                                  (kappa_hat * JUMP_SD_FLAT) ** 2)
+            fit_floor = SPREAD_FIT_FLOOR_FLAT
+        else:
+            n_ref = max(1.0, horizon_h / max(1.0, tau))
+            sd_g = math.sqrt(n_ref) * SD_LOGJUMP
+            sigma_dil = math.sqrt((g_log * SD_KAPPA) ** 2 + (kappa_hat * sd_g) ** 2)
+            fit_floor = SPREAD_FIT_FLOOR
+        sigma_b = math.sqrt(max(fit_floor, fit_sd) ** 2 +
                             horizon_sd ** 2 + sigma_dil ** 2)
         sigma_b = min(SPREAD_MAX, max(SPREAD_MIN, sigma_b * SPREAD_SCALE))
         if last_rate >= 99.99:
@@ -473,6 +569,23 @@ def forecast_case(case):
                      "sigma_a": SPREAD_FROZEN if last_rate < 99.99 else 0.5,
                      "sigma_b": sigma_b,
                      "p": p_refresh})
+    if os.environ.get("MAKEFUN_DEBUG"):
+        LAST_DEBUG.clear()
+        LAST_DEBUG.update({
+            "g_n": g_n,
+            "g_model": math.log(max(1.0, t_branch if rows else last_tracked) / max(1.0, last_tracked)) if rows else 0.0,
+            "kappa_hat": kappa_hat,
+            "jump": jump,
+            "tau": tau,
+            "stale_h": stale_h,
+            "p_refresh": p_refresh,
+            "t_at_target": t_at_target,
+            "last_tracked": last_tracked,
+            "n_events": len(events),
+            "n_win_events": len(win_events),
+            "pool_b": pool_b,
+            "t_branch": t_branch if rows else None,
+        })
     return rows
 
 def mixture_quantile(rate_a, sigma_a, rate_b, sigma_b, p, tau):

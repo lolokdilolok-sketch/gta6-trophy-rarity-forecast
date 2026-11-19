@@ -71,6 +71,41 @@ tracked separately, then divides.
   scaling), and it genuinely widens with horizon (edge test: sigma_b
   0.45 at 90 min → 0.77 at 6,510 min). The 100% trophy is forced to
   99.99 with a wide spread.
+- **Round 4 — flat/stale page (practice fix):** round 3 scored 0.422
+  on the practice server (rank 1559/3164) because a history with NO
+  refresh fell back to a ~2x dilution while the first refresh really
+  dilutes ~6x (tracked 638 → 3,868). The page's data dates from when
+  it was FIRST seen, not the last read, so the catch-up jump now
+  grows the power law from the first-seen time to the target (~5.5x
+  on p00, ~6.0x on p01); the refresh is treated as certain once the
+  catch-up growth exceeds 2x (a refresh is a growth-driven catch-up,
+  not a clock coin flip); kappa for the first refresh is 0.95 (its
+  joiners are all fresh players who have not earned the rare
+  trophies); and the spread is tightened for the committed single
+  refresh (kappa sd 0.05, jump-size sd 0.15, fit floor 0.05).
+  Practice proxy (calibrated so round 3 scores 0.413 on it, vs the
+  server's 0.422): 0.413 → **0.066**, typical miss 0.013pp. The flat
+  path only fires when the history shows no refresh at all, so rich
+  final histories are byte-identical to round 3.
+- **Round 4 — saturating progression (final fix):** the earned slope
+  is fitted on a logistic (saturating) curve, so a linear
+  extrapolation overshoots earned by a constant +0.46 logit over the
+  4.5-day horizon (measured on 18 synthetic finals; the true slope
+  falls 0.63 → 0.20 across the horizon). The slope now decays
+  exponentially past the window. The decay rate is deliberately HALF
+  the fitted value (SAT_DECAY = 0.5 per log-hour, not 1.5): a second
+  generator family (bench.py's cohort worlds, where new players keep
+  arriving and the aggregate progression saturates slowly) is HURT by
+  the full decay — at 1.5 it loses to the trend baseline in all 5
+  worlds (0.245–0.277 vs trend 0.221–0.240), while at 0.5 it still
+  beats trend in all 5 (0.188–0.218). The real final is a mix of both
+  families, so 0.5 is the minimax-regret choice. Synthetic finals
+  improve from mean 0.372 / worst 0.584 to mean **0.338 / worst
+  0.498** (tuning suite) and **0.321 / 0.474** (fresh suite), still
+  beating trend (1.576) and flat (2.052) in all 18 cases. At the full
+  decay (1.5) the logistic worlds would reach 0.312 / 0.403 and
+  0.314 / 0.425, but the cohort gate risk is not worth the extra
+  0.026.
 
 Standard library only. Deterministic: no randomness, no wall clock, so
 two runs write identical bytes.
@@ -84,14 +119,37 @@ MAKEFUN_INPUT_DIR=input MAKEFUN_OUTPUT_DIR=out python3 main.py
 Reads every `*.in` in the input directory (or `/input/`), writes one
 `<id>.out` per case to the output directory (or `/output/`).
 
-## Validation (measured 19 Nov 2026, round 3)
+## Validation (measured 19 Nov 2026, round 4)
 
 - Independent synthetic finals (9 cases: 3 seeds × kappa 0.5/0.7/1.0,
   saturating trophy curves, refreshes every 5–9h, tracked ×46–67 over
-  the horizon): mine mean loss **0.372** (per case 0.288–0.584) vs
+  the horizon): mine mean loss **0.338** (per case 0.263–0.498) vs
   trend baseline 1.576 vs flat 2.052 — beats trend in all 9 cases.
-  Coverage90 0.98. Worst case is now s3k7 (0.584); s3k10, the round-2
-  worst case, fell from 0.793 to 0.497. Round 2 was 0.401 / 0.793.
+  Coverage90 0.93–1.00 (mean 0.98). Worst case is now s3k7 (0.498);
+  round 3 was 0.372 / 0.584 on the same suite.
+- Fresh synthetic finals (9 NEW cases: seeds 4–6 × kappa 0.5/0.7/1.0,
+  generated after the round-4 changes to check for overfitting):
+  mine mean loss **0.321** (per case 0.249–0.474) vs trend 1.567 vs
+  flat 2.105 — beats trend in all 9. Worst case s6k10 (0.474).
+  Coverage90 0.82–1.00 (mean 0.97); the one dip is s5k10 (0.82),
+  pre-existing in round 3 too — in that world the realised tracked
+  growth runs far from the last day's rate and the band under-covers.
+- Cohort synthetic finals (bench.py's five worlds: base, fast/slow
+  tracked growth, fast progression, no-dilution; power-law tracked
+  growth, refreshes every 6h, tracked only ×3.4 over the horizon):
+  mine **0.188–0.218** vs trend 0.221–0.240 vs flat 0.459–0.527 —
+  beats trend in all 5. Round 3 was 0.168–0.196 there; the
+  saturation decay costs ~0.02 on these worlds (their progression
+  saturates slowly) and buys ~0.03 on the logistic worlds — the
+  0.5 decay is the balance between the two families.
+- Practice (server, round 3): loss 0.422, rank 1559/3164. Round 4 on
+  the calibrated practice proxy (answer = first refresh, tracked
+  638 → 3,868, newcomers earn each trophy at r·min(1, r/25)): loss
+  **0.066** (theta=25; 0.064 at theta=15, 0.077 at theta=40),
+  typical miss 0.013pp, coverage 0.98. The proxy is anchored to the
+  server: round 3 scores 0.413 on it vs the server's 0.422. The
+  proxy is an estimate, not the true answer — the true practice
+  score is only known after submit.
 - Synthetic final, five worlds of round 1 (cohort dilution, fast/slow
   tracked growth, fast progression, and a no-dilution world): mine
   0.168–0.196 vs trend 0.221–0.240 vs flat 0.459–0.527 — still beats
@@ -113,10 +171,11 @@ Reads every `*.in` in the input directory (or `/input/`), writes one
 - Edge cases (edge.py, exit 0): 0% trophy, null rates, trophy missing
   from some reads, tracked jump (dilution), secret trophies, 6,510-min
   horizon. The spread now genuinely widens with horizon (sigma_b
-  median 0.45 at 90 min → 0.77 at 6,510 min) — round 1's edge test
+  median 0.25 at 90 min → 0.60 at 6,510 min) — round 1's edge test
   FAILED this assertion twice (final spread narrower than practice).
-- Two runs byte-identical; ~0.3 s per case; outputs ~2.8 KB each
-  (limit 65,536); all 55 ids, quantiles non-decreasing, 0–100.
+- Two runs byte-identical; ~0.1 s practice, ~1 s per synthetic case
+  (limit 8 s); outputs ~2.8 KB each (limit 65,536); all 55 ids,
+  quantiles non-decreasing, 0–100.
 
 ## Caveat
 
