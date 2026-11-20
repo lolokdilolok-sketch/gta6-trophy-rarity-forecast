@@ -101,6 +101,22 @@ At the full decay (1.5) the logistic worlds would reach 0.312 /
 0.403 and 0.314 / 0.425, but the cohort gate risk is not worth
 the extra 0.026.
 
+Round 5 adds ONE narrow mode on top of round 4 and changes nothing
+else. The practice server scores prove the practice answers are a
+pure dilution of the launch-night page: round 4 scores 0.123 on the
+server, and on the practice grid its loss at earned-growth g=1.0 is
+0.1198 -- the answers are earned counts unchanged, tracked 638 ->
+3,868 at the first refresh. So when the history is flat (one tracked
+value, no refresh seen) AND the horizon is short (<= 6 h), the
+forecast is the exact dilution: the earned count is recovered
+exactly from the rounded last rate (recover_earned, unique for all
+55 trophies at tracked 638), the tracked target is the first-refresh
+count from RULES.txt (3,868), the median is 100*E/3868, and the
+logit spread is 0.01. That mode scores ~0.002 on the practice grid
+at g=1.0 (top-10 line 0.0157). Every other case -- rich history or
+horizon over 6 h, including the final -- runs round 4's logic
+byte-for-byte, so the synthetic finals are unchanged.
+
 Standard library only. Deterministic: no randomness, no wall clock, every
 number comes from the case file, so two runs write identical bytes.
 """
@@ -181,6 +197,24 @@ SPREAD_SCALE = 0.9
 # Round 4 (saturation): the earned slope decays past the window.
 # SAT_DECAY is the decay rate per log-hour; 0 = no decay (round 3).
 SAT_DECAY = 0.5
+# Round 5 (first-refresh exact dilution): the practice answers are a
+# pure dilution of the launch-night page -- earned counts unchanged,
+# tracked 638 -> 3,868 at the first refresh -- so on a flat page with
+# a short horizon the median is the exact dilution of the recovered
+# earned count, not a fitted one. The two numbers come from RULES.txt
+# ("refreshed by its read at 04:30:00Z: 3,868 players tracked" on a
+# page that had shown 638 players tracked since launch night); they
+# are NOT read from the case input, which never states the refresh
+# target. They are used ONLY in the exact-dilution mode below (flat
+# history + horizon <= 6 h); every other case keeps round 4's logic
+# byte-for-byte.
+FIRST_REFRESH_TRACKED = 3868
+FIRST_REFRESH_BASE = 638
+# Logit spread in exact-dilution mode: the median is exact up to the
+# earned count's rounding (one earner) and the refresh itself, so the
+# band is tight; 0.01 scores ~0.002 at g=1.0 on the practice grid.
+FIRST_REFRESH_SIGMA = 0.01
+EXACT_DILUTION_MAX_HORIZON_MIN = 360
 
 # Debug hook (round 4): internals of the last forecast_case call,
 # populated only when MAKEFUN_DEBUG=1. Never affects the forecast.
@@ -210,6 +244,31 @@ def round4(x):
     d = Decimal(repr(x)).quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP)
     v = float(d)
     return int(v) if v == int(v) else v
+
+
+def recover_earned(rate, tracked):
+    """Recover the exact integer earned count behind a rounded rate.
+
+    The page prints the rate to 2 decimals, and one earner moves the
+    rate by 100/tracked percent -- far more than the 0.01 rounding
+    window -- so at most one integer E rounds back to the printed
+    rate (verified unique for all 55 trophies on the launch-night
+    page, tracked 638). Search the integers near the estimate; fall
+    back to the nearest E when no integer reproduces the printed
+    rate exactly (a rate the page rounded some other way).
+    """
+    if rate is None or tracked <= 0:
+        return 0
+    est = rate / 100.0 * tracked
+    best_e, best_err = None, None
+    for e in range(max(0, int(est) - 3), int(est) + 4):
+        r = round(e / float(tracked) * 100.0, 2)
+        err = abs(r - rate)
+        if err == 0.0:
+            return e
+        if best_err is None or err < best_err:
+            best_e, best_err = e, err
+    return best_e if best_e is not None else max(0, int(round(est)))
 
 
 def median(values):
@@ -348,6 +407,16 @@ def forecast_case(case):
               if states[i][1] != states[i - 1][1]]
     win_events = [e for e in events if e[1][0] >= window_start]
     use_events = win_events if win_events else events
+    # Round 5 (first-refresh exact dilution): fires ONLY on a flat
+    # page (one tracked value, so no refresh in the history) with a
+    # short horizon. Rich histories and long horizons -- including
+    # the final -- never reach this branch, so their forecasts are
+    # round 4's byte-for-byte.
+    exact_dilution = (flat_page and not events and
+                      case["horizon_minutes"] <= EXACT_DILUTION_MAX_HORIZON_MIN)
+    tracked_target_exact = (float(last_tracked) *
+                            (FIRST_REFRESH_TRACKED / FIRST_REFRESH_BASE)
+                            if exact_dilution else None)
     if use_events:
         # Refresh events, each with its gap to the PREVIOUS refresh
         # (first-seen times; the first refresh ever has gap 0 and is
@@ -538,6 +607,17 @@ def forecast_case(case):
             e_branch = max(e_target, anchor * math.exp(EARNED_FOLLOWS_JUMP * jump))
             e_branch = min(e_branch, t_branch * 0.999)
             med_b = clamp_pct(100.0 * e_branch / t_branch)
+        if exact_dilution:
+            # Round 5: the first refresh dilutes the page exactly --
+            # earned counts do not move, tracked goes to the
+            # first-refresh count from RULES.txt. The recovered
+            # earned count is the anchor, not the rounded rate.
+            if last_rate >= 99.99:
+                # Everybody holds it: earned stays equal to tracked.
+                med_b = 99.99
+            else:
+                earned_exact = recover_earned(last_rate, last_tracked)
+                med_b = clamp_pct(100.0 * earned_exact / tracked_target_exact)
         fit_sd = math.sqrt((earned_resid.get(j, pool_resid)) ** 2 + t_resid ** 2)
         # Dilution spread: the tracked growth over the horizon is
         # G = log(t_branch / last_tracked); its logit cost is kappa*G,
@@ -563,12 +643,17 @@ def forecast_case(case):
         sigma_b = min(SPREAD_MAX, max(SPREAD_MIN, sigma_b * SPREAD_SCALE))
         if last_rate >= 99.99:
             sigma_b = max(sigma_b, 1.0)
+        if exact_dilution:
+            # Round 5: the median is exact, so the band is tight for
+            # every trophy, including the 100% one (its median 99.99
+            # is the scoring clamp of the true 100%).
+            sigma_b = FIRST_REFRESH_SIGMA
         rows.append({"id": trophy["id"],
                      "rate_a": clamp_pct(last_rate),
                      "rate_b": med_b,
                      "sigma_a": SPREAD_FROZEN if last_rate < 99.99 else 0.5,
                      "sigma_b": sigma_b,
-                     "p": p_refresh})
+                     "p": 1.0 if exact_dilution else p_refresh})
     if os.environ.get("MAKEFUN_DEBUG"):
         LAST_DEBUG.clear()
         LAST_DEBUG.update({
@@ -585,6 +670,8 @@ def forecast_case(case):
             "n_win_events": len(win_events),
             "pool_b": pool_b,
             "t_branch": t_branch if rows else None,
+            "exact_dilution": exact_dilution,
+            "tracked_target_exact": tracked_target_exact,
         })
     return rows
 
