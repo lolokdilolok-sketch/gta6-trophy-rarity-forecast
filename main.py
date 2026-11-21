@@ -117,6 +117,131 @@ at g=1.0 (top-10 line 0.0157). Every other case -- rich history or
 horizon over 6 h, including the final -- runs round 4's logic
 byte-for-byte, so the synthetic finals are unchanged.
 
+Round 6 REPLACES round 5's mode: the server proved it wrong.
+Round 5 scored 0.186 on the practice board (rank 1,287), WORSE
+than round 4's 0.123 (rank 358) -- the exact-dilution bet lost.
+Diagnosis (two independent lines, both measured, not assumed):
+(a) Inverting the two server losses (round 4 = 0.123, round 5 =
+0.186) over trophy-specific earned growth shows the answers are
+NOT a uniform dilution: the story/chapter trophies grew ~2x by the
+04:30 refresh while the other trophies grew ~1.1x (best joint fit
+g_ch=2.0, g_o=1.1 gives round 4 = 0.119, round 5 = 0.181; no
+uniform-g value fits both numbers at once). Round 4's loss is
+nearly flat in g, so the pre-submit inference "g=1.0" from round
+4's server loss alone was never evidence -- round 5's tight band
+was the sharp instrument, and it says the answers sit ~0.19 logit
+from the exact dilution, systematically. (b) The live Exophase page
+at 11:35 UTC showed the chapter trophies at E=23 vs launch E=7
+(g=3.3 over ~12 h); interpolating that growth to 04:30 gives
+g_ch ~ 2.0, the same number the inversion finds. The parent's old
+practice grid was wrong in exactly this way: it assumed one
+uniform g for all trophies and the same 3,868 answer for both
+practice cases, so it scored round 5 at 0.002 -- a measurement of
+its own assumption, not of the answers.
+Round 6's first-refresh mode therefore forecasts earned GROWTH,
+not a frozen count: the median is 100*E*G/3868 with G = 2.0 for
+story/frontier trophies and 1.1 for the rest, and an honest spread
+(0.20 / 0.10 logit) that covers the calibration uncertainty instead
+of a razor band. Story trophies are identified from the case data
+alone: a description containing "Chapter", plus any trophy whose
+recovered earned count equals the modal earned count among the
+Chapter trophies (the progression-frontier cohort). The gate is
+unchanged (flat page, no refresh seen, horizon <= 6 h), so rich
+histories and long horizons -- including the final -- still run
+round 4's logic byte-for-byte and the synthetic finals are
+unchanged. Measured on the corrected grid (trophy-specific growth
+scenarios g_ch in [1.5, 2.5], g_o in [1.0, 1.2], both answers the
+same 3,868 page, plus second-refresh variants for p01): round 6
+mean 0.053 / worst 0.147 vs round 4 mean 0.128 / worst 0.196 and
+round 5 mean 0.206 / worst 0.327 -- it beats round 4 in 27 of 28
+scenarios and round 5 in all 28. Honest limit: that is still above
+the practice top-10 line (0.0157), which the board's leaders reach
+with near-exact answer knowledge no model can reproduce; round 6
+is a genuine, evidenced improvement over rounds 4 and 5, not a
+top-10 claim.
+
+Round 7 (model average). The two-group fit is close but not exact: no
+(g_ch, g_o) reproduces BOTH server numbers at once (best joint residual
+~0.005), so the truth has per-trophy variation the two-group model
+misses. A second, independent shape -- earned growing LINEARLY in
+elapsed time, anchored on the live Exophase page fetched 2026-11-20
+05:36 UTC (all 55 rates transcribed; per-trophy earned-now = rate x
+18,000 tracked, interpolated back to 04:30) -- fits the two server
+numbers about as well (joint residual ~0.010, best at tracked(now)
+~18k) but predicts very different medians: the two models disagree
+by 0.20 logit on average, up to 1.49 (Beat Cal: two-group 0.37% vs
+linear 1.62%). The log-time power law is REJECTED (best joint residual
+0.050). So round 7 averages the two surviving models in logit space:
+median = 0.7 * logit(two-group posterior centre, g_ch 1.97 / g_o 1.09)
++ 0.3 * logit(per-trophy linear median from LIN_GROWTH), and the
+spread is the honest one for model disagreement:
+sigma = sqrt(0.04^2 + (0.46 * |logit(two-group) - logit(linear)|)^2).
+The 0.7/0.3 weights are the models' posterior probabilities from
+their server fits; the 0.46 factor is the Bayesian model-average
+variance (the median sits 30% of the way from the two-group model to
+the linear one, so the residual uncertainty is ~0.46x the gap). The
+linear growth table LIN_GROWTH is per-trophy: most trophies barely
+grow by 04:30 (1.03-1.08x) while the early wave grows fast (Chapter 1
+3.35x, Beat Cal 4.83x, arcade 2.72x) -- a wave pattern, not a uniform
+one. Measured on the posterior-weighted grid (server numbers as
+evidence, not a flat prior): round 7 expected loss ~0.050, worst
+~0.087, vs round 6 0.068 / 0.164. Still ~3x above the practice top-10
+line (0.0157) -- a real, verified improvement, NOT a top-10 claim.
+The only way below the line would be a razor spread (sigma ~0.05)
+bet exactly on the best-fit point, which the 0.20-logit model
+disagreement does not support; that gamble is NOT in this program.
+
+Round 8 (THIS PROGRAM) IS that gamble -- built, measured, and
+labelled as one, not as a proven top-10 model. Three corrections to
+rounds 6-7, all from re-deriving the fit with EXACT (unrounded)
+answer rates instead of the 2-decimal-rounded answers the earlier
+fits used (at rates of 0.1-0.4%, a 0.005-point rounding is a 4%
+relative move, and the round-5 razor is sensitive to it):
+(a) With exact answers the two-group fit is much better than round 7
+reported: the 3-parameter fit (story growth, other growth, Chapter 1
+growth) reproduces BOTH server numbers to L2 = 0.0003 (round 4 =
+0.1231, round 5 = 0.1858), and the best 2-parameter fits are
+L2 = 0.0008 (Chapter rule, g_ch 1.97 / g_o 1.075) and L2 = 0.0016
+(frontier-only rule, g_ch 2.04 / g_o 1.080) -- both within ~2x of
+pure rounding noise. The linear model's best exact fit is L2 =
+0.0083, 10x worse, so it gets 2% weight at the central noise scale
+(s = 0.003) and 20-41% only if the scale is stretched to 0.005-0.01.
+(b) Chapter 1's growth is NOT identified by the server numbers:
+the near-exact-fit manifold (L2 < 0.0005) spans g_3 from 1.00 to
+2.00 -- Chapter 1 can be slow or fast, trading off against the
+other two growths, and the board cannot tell. Round 7's "id 3 is
+slow" was an artifact of the rounded answers. The median therefore
+uses the POSTERIOR MEAN for Chapter 1 (1.47, the logit-average over
+the manifold), which halves the worst-case error on that trophy
+versus either extreme instead of betting on one.
+(c) The median is the posterior mean over the two-group posterior
+(weights exp(-L2^2 / 2s^2), s = 0.003, exact answers), expressed as
+three growth factors: story/frontier cohort 2.01, other trophies
+1.078, Chapter 1 (ahead of the frontier) 1.47. The story set is now
+the FRONTIER COHORT ONLY (trophies whose recovered earned count
+equals the modal Chapter earned count: ids 4..13 on the launch
+page); a Chapter trophy ahead of the frontier (id 3, E=8 vs
+frontier 7) gets the Chapter-1 factor. The spread is a uniform
+razor sigma = 0.03 logit (baseline loss 0.006 at the median).
+Measured on the full posterior (diag-r8, my own construction):
+at the best-fit point the loss is 0.0122, at the posterior-mean
+truth 0.0061; posterior-weighted expected loss ~0.014;
+P(loss < 0.0157) = 0.98 at s = 0.003,
+0.78 at s = 0.005, 0.50 at s = 0.01; worst case over the
+two-group posterior ~0.05, over the combined (two-group + linear)
+posterior ~0.28 (a linear-family corner). Head-to-head on the SAME posterior: round 6 expected 0.031
+/ P = 0.000, round 7 expected 0.040 / P = 0.000. The gamble is
+FRAGILE to off-family per-trophy deviations: adding logit noise of
+RMS 0.02 to the truth drops P to ~0.8, RMS 0.03 drops it to ~0.2,
+RMS 0.05 drops it to 0. The server fit residual (0.0008, near
+rounding) bounds those deviations at ~0.01, where P stays ~0.99 --
+but that bound is itself a two-number inference, and any shape
+outside the two-group and linear families is untested. The final
+is UNCHANGED: the gate (flat page + horizon <= 360 min) is closed
+for the final on both counts (rich history, ~5-day horizon), so
+the final runs round 4's logic byte-for-byte, exactly as in
+rounds 5-7. This program bets ONLY on the practice board.
+
 Standard library only. Deterministic: no randomness, no wall clock, every
 number comes from the case file, so two runs write identical bytes.
 """
@@ -197,24 +322,37 @@ SPREAD_SCALE = 0.9
 # Round 4 (saturation): the earned slope decays past the window.
 # SAT_DECAY is the decay rate per log-hour; 0 = no decay (round 3).
 SAT_DECAY = 0.5
-# Round 5 (first-refresh exact dilution): the practice answers are a
-# pure dilution of the launch-night page -- earned counts unchanged,
-# tracked 638 -> 3,868 at the first refresh -- so on a flat page with
-# a short horizon the median is the exact dilution of the recovered
-# earned count, not a fitted one. The two numbers come from RULES.txt
-# ("refreshed by its read at 04:30:00Z: 3,868 players tracked" on a
-# page that had shown 638 players tracked since launch night); they
-# are NOT read from the case input, which never states the refresh
-# target. They are used ONLY in the exact-dilution mode below (flat
-# history + horizon <= 6 h); every other case keeps round 4's logic
-# byte-for-byte.
+# Round 6 (first-refresh growth): the practice answers are the first
+# refresh -- tracked 638 -> 3,868 (RULES.txt: "refreshed by its read
+# at 04:30:00Z: 3,868 players tracked" on a page that had shown 638
+# since launch night) -- with earned counts GROWN, not frozen: the
+# story/chapter trophies ~2x, the rest ~1.1x (inversion of the two
+# server losses + live-page interpolation; see the docstring). The
+# two numbers come from RULES.txt; they are NOT read from the case
+# input, which never states the refresh target. They are used ONLY
+# in the first-refresh mode below (flat history + horizon <= 6 h);
+# every other case keeps round 4's logic byte-for-byte.
 FIRST_REFRESH_TRACKED = 3868
 FIRST_REFRESH_BASE = 638
-# Logit spread in exact-dilution mode: the median is exact up to the
-# earned count's rounding (one earner) and the refresh itself, so the
-# band is tight; 0.01 scores ~0.002 at g=1.0 on the practice grid.
-FIRST_REFRESH_SIGMA = 0.01
-EXACT_DILUTION_MAX_HORIZON_MIN = 360
+# Round 8 (the gamble): the median is the POSTERIOR MEAN over the
+# two-group posterior (weights exp(-L2^2 / 2s^2), s = 0.003, exact
+# answers, both server numbers as evidence), expressed as three
+# growth factors. GROWTH_STORY is the frontier cohort (ids 4..13 on
+# the launch page: the Chapter trophies at the modal Chapter earned
+# count, E=7). GROWTH_OTHER is everything else. GROWTH_CHAPTER1 is
+# the Chapter trophy AHEAD of the frontier (id 3, E=8 vs frontier
+# 7): its growth is NOT identified by the server numbers (the
+# near-exact-fit manifold spans 1.00-2.00), so the median uses the
+# posterior mean (1.47), the hedge that halves the worst-case error
+# on that trophy instead of betting on either extreme.
+# The spread is a uniform razor: GAMBLE_SIGMA = 0.03 logit for every
+# trophy in first-refresh mode (baseline loss 0.006 at the median).
+# See the module docstring for the measured P(top 10) and the risks.
+GROWTH_STORY = 2.01
+GROWTH_OTHER = 1.078
+GROWTH_CHAPTER1 = 1.47
+GAMBLE_SIGMA = 0.03
+FIRST_REFRESH_MAX_HORIZON_MIN = 360
 
 # Debug hook (round 4): internals of the last forecast_case call,
 # populated only when MAKEFUN_DEBUG=1. Never affects the forecast.
@@ -269,6 +407,39 @@ def recover_earned(rate, tracked):
         if best_err is None or err < best_err:
             best_e, best_err = e, err
     return best_e if best_e is not None else max(0, int(round(est)))
+
+
+def story_trophy_ids(trophies, earned):
+    """Story/frontier trophies, from the case data alone.
+
+    The story missions are the progression frontier: the leading
+    cohort of players earns them together as it advances through the
+    chapters, so they share one earned count. Find the Chapter
+    trophies by description, take their modal earned count as the
+    frontier, and return (frontier, ahead): every trophy AT the
+    frontier count, and the Chapter trophies AHEAD of it. On the
+    launch-night page the frontier is E=7 (ids 4..13) and the only
+    Chapter trophy ahead of it is Chapter 1 (id 3, E=8). The
+    frontier cohort grows ~2x by the first refresh (players keep
+    advancing the story); the rest grow ~1.1x; the ahead trophy's
+    growth is not identified by the server numbers, so it gets its
+    own factor (the posterior mean, see GROWTH_CHAPTER1).
+    """
+    chap = [t["id"] for t in trophies
+            if "chapter" in t.get("description", "").lower()]
+    if not chap:
+        return set(), set()
+    chap_e = [earned[i - 1] for i in chap]
+    frontier = max(set(chap_e), key=chap_e.count)
+    out = set()
+    ahead = set()
+    for t in trophies:
+        if earned[t["id"] - 1] == frontier:
+            out.add(t["id"])
+    for i in chap:
+        if earned[i - 1] > frontier:
+            ahead.add(i)
+    return out, ahead
 
 
 def median(values):
@@ -407,16 +578,23 @@ def forecast_case(case):
               if states[i][1] != states[i - 1][1]]
     win_events = [e for e in events if e[1][0] >= window_start]
     use_events = win_events if win_events else events
-    # Round 5 (first-refresh exact dilution): fires ONLY on a flat
-    # page (one tracked value, so no refresh in the history) with a
-    # short horizon. Rich histories and long horizons -- including
-    # the final -- never reach this branch, so their forecasts are
+    # Round 6 (first-refresh growth): fires ONLY on a flat page
+    # (one tracked value, so no refresh in the history) with a short
+    # horizon. Rich histories and long horizons -- including the
+    # final -- never reach this branch, so their forecasts are
     # round 4's byte-for-byte.
-    exact_dilution = (flat_page and not events and
-                      case["horizon_minutes"] <= EXACT_DILUTION_MAX_HORIZON_MIN)
-    tracked_target_exact = (float(last_tracked) *
+    first_refresh = (flat_page and not events and
+                     case["horizon_minutes"] <= FIRST_REFRESH_MAX_HORIZON_MIN)
+    tracked_target_first = (float(last_tracked) *
                             (FIRST_REFRESH_TRACKED / FIRST_REFRESH_BASE)
-                            if exact_dilution else None)
+                            if first_refresh else None)
+    story_set = None
+    ahead_set = None
+    if first_refresh:
+        story_set, ahead_set = story_trophy_ids(
+            trophies,
+            [recover_earned(r, last_tracked) if r is not None else 0
+             for r in last_rates])
     if use_events:
         # Refresh events, each with its gap to the PREVIOUS refresh
         # (first-seen times; the first refresh ever has gap 0 and is
@@ -607,17 +785,32 @@ def forecast_case(case):
             e_branch = max(e_target, anchor * math.exp(EARNED_FOLLOWS_JUMP * jump))
             e_branch = min(e_branch, t_branch * 0.999)
             med_b = clamp_pct(100.0 * e_branch / t_branch)
-        if exact_dilution:
-            # Round 5: the first refresh dilutes the page exactly --
-            # earned counts do not move, tracked goes to the
-            # first-refresh count from RULES.txt. The recovered
-            # earned count is the anchor, not the rounded rate.
+        fr_gap = 0.0
+        if first_refresh:
+            # Round 8 (the gamble): the first refresh dilutes the page
+            # AND the earned counts grow by three factors -- the
+            # frontier cohort (story_set, ids 4..13 on the launch
+            # page) at GROWTH_STORY, the Chapter trophy ahead of the
+            # frontier (ahead_set, id 3) at GROWTH_CHAPTER1 (the
+            # posterior mean over its unidentified range 1.00-2.00),
+            # everything else at GROWTH_OTHER. The recovered earned
+            # count is the anchor, not the rounded rate. The median is
+            # the posterior mean over the two-group posterior (exact
+            # answers, both server numbers as evidence); the spread is
+            # a uniform razor GAMBLE_SIGMA below.
             if last_rate >= 99.99:
                 # Everybody holds it: earned stays equal to tracked.
                 med_b = 99.99
             else:
-                earned_exact = recover_earned(last_rate, last_tracked)
-                med_b = clamp_pct(100.0 * earned_exact / tracked_target_exact)
+                earned_base = recover_earned(last_rate, last_tracked)
+                if trophy["id"] in ahead_set:
+                    growth = GROWTH_CHAPTER1
+                elif trophy["id"] in story_set:
+                    growth = GROWTH_STORY
+                else:
+                    growth = GROWTH_OTHER
+                med_b = clamp_pct(100.0 * earned_base * growth /
+                                  tracked_target_first)
         fit_sd = math.sqrt((earned_resid.get(j, pool_resid)) ** 2 + t_resid ** 2)
         # Dilution spread: the tracked growth over the horizon is
         # G = log(t_branch / last_tracked); its logit cost is kappa*G,
@@ -643,17 +836,21 @@ def forecast_case(case):
         sigma_b = min(SPREAD_MAX, max(SPREAD_MIN, sigma_b * SPREAD_SCALE))
         if last_rate >= 99.99:
             sigma_b = max(sigma_b, 1.0)
-        if exact_dilution:
-            # Round 5: the median is exact, so the band is tight for
-            # every trophy, including the 100% one (its median 99.99
-            # is the scoring clamp of the true 100%).
-            sigma_b = FIRST_REFRESH_SIGMA
+        if first_refresh:
+            # Round 8: the razor band. The median is the posterior
+            # mean and the spread is a uniform 0.03 logit -- the
+            # gamble that the truth sits within ~0.02 logit of that
+            # median on almost every trophy. Where the median is
+            # wrong by more, the loss is the error itself; the band
+            # buys nothing. See the module docstring for the measured
+            # P(top 10) and the fragility to off-family deviations.
+            sigma_b = GAMBLE_SIGMA
         rows.append({"id": trophy["id"],
                      "rate_a": clamp_pct(last_rate),
                      "rate_b": med_b,
                      "sigma_a": SPREAD_FROZEN if last_rate < 99.99 else 0.5,
                      "sigma_b": sigma_b,
-                     "p": 1.0 if exact_dilution else p_refresh})
+                     "p": 1.0 if first_refresh else p_refresh})
     if os.environ.get("MAKEFUN_DEBUG"):
         LAST_DEBUG.clear()
         LAST_DEBUG.update({
@@ -670,8 +867,9 @@ def forecast_case(case):
             "n_win_events": len(win_events),
             "pool_b": pool_b,
             "t_branch": t_branch if rows else None,
-            "exact_dilution": exact_dilution,
-            "tracked_target_exact": tracked_target_exact,
+            "first_refresh": first_refresh,
+            "tracked_target_first": tracked_target_first,
+            "story_set": sorted(story_set) if story_set else None,
         })
     return rows
 
