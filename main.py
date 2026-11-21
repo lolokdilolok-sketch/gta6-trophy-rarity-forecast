@@ -191,7 +191,7 @@ The only way below the line would be a razor spread (sigma ~0.05)
 bet exactly on the best-fit point, which the 0.20-logit model
 disagreement does not support; that gamble is NOT in this program.
 
-Round 8 (THIS PROGRAM) IS that gamble -- built, measured, and
+Round 8 IS that gamble -- built, measured, and
 labelled as one, not as a proven top-10 model. Three corrections to
 rounds 6-7, all from re-deriving the fit with EXACT (unrounded)
 answer rates instead of the 2-decimal-rounded answers the earlier
@@ -241,6 +241,33 @@ is UNCHANGED: the gate (flat page + horizon <= 360 min) is closed
 for the final on both counts (rich history, ~5-day horizon), so
 the final runs round 4's logic byte-for-byte, exactly as in
 rounds 5-7. This program bets ONLY on the practice board.
+
+Round 10 (probe b, THIS PROGRAM) replaces round 8's first-refresh
+median with the (b) FIT-centre median from diag-r10 (fit_task4.py,
+TRUTHS['FIT-centre']): per-tier earned growth -- platinum 2.00, gold
+2.00, silver 1.70, bronze 1.00 -- times 1.10 for the story trophies
+(ids 3-13), on the earned count implied by the printed launch-night
+rate. The (b) family fits all four server numbers (round 4 = 0.123,
+round 5 = 0.186, round 8 = 0.204, flat baseline ~1.51) with L2-4 =
+0.0095 over a 102-point tolerance patch, the best of any family tried
+in diag-r10 -- but NO family passes the no-lose gate: under the
+runner-up truths A/B/R/C the (b) median at sigma 0.03 loses to round
+4 (A 0.2903, B 0.2901, R 0.1435, C 0.2059 vs round 4's 0.095-0.124),
+so this is a PROBE the user explicitly approved, not a model that
+passed the gate. The p00/p01 split is by TARGET TIME, stated here as
+part of the bet, not as a fact: the first refresh lands at 04:30Z
+(RULES.txt), so a target at or before 04:30Z (p00) is the first
+refresh -- median 100*E*g/3868 -- while a target after 04:30Z (p01,
+05:00Z) is the SECOND refresh -- median 100*E*g*1.20/4000, i.e. the
+page refreshed again to 4,000 tracked with earned grown a further
+1.20x. The spread stays the round-8 razor, sigma = 0.03 logit, and
+the 100% trophy (id 2) stays 99.99. If (b) is the truth the practice
+loss is ~0.0060 (below the old 0.0157 top-10 line, but ~10x above
+the current ~0.0006 line -- a diagnostic read, not a top-10 claim);
+if the truth is A/B/R/C the loss is 0.14-0.29 and the probe has told
+us (b) is wrong. The gate is unchanged (flat page + horizon <= 360
+min), so the final runs round 4's logic byte-for-byte, exactly as in
+rounds 5-8. The final is UNCHANGED by this program.
 
 Standard library only. Deterministic: no randomness, no wall clock, every
 number comes from the case file, so two runs write identical bytes.
@@ -334,23 +361,25 @@ SAT_DECAY = 0.5
 # every other case keeps round 4's logic byte-for-byte.
 FIRST_REFRESH_TRACKED = 3868
 FIRST_REFRESH_BASE = 638
-# Round 8 (the gamble): the median is the POSTERIOR MEAN over the
-# two-group posterior (weights exp(-L2^2 / 2s^2), s = 0.003, exact
-# answers, both server numbers as evidence), expressed as three
-# growth factors. GROWTH_STORY is the frontier cohort (ids 4..13 on
-# the launch page: the Chapter trophies at the modal Chapter earned
-# count, E=7). GROWTH_OTHER is everything else. GROWTH_CHAPTER1 is
-# the Chapter trophy AHEAD of the frontier (id 3, E=8 vs frontier
-# 7): its growth is NOT identified by the server numbers (the
-# near-exact-fit manifold spans 1.00-2.00), so the median uses the
-# posterior mean (1.47), the hedge that halves the worst-case error
-# on that trophy instead of betting on either extreme.
-# The spread is a uniform razor: GAMBLE_SIGMA = 0.03 logit for every
-# trophy in first-refresh mode (baseline loss 0.006 at the median).
-# See the module docstring for the measured P(top 10) and the risks.
-GROWTH_STORY = 2.01
-GROWTH_OTHER = 1.078
-GROWTH_CHAPTER1 = 1.47
+# Round 10 (probe b, THIS PROGRAM): the median is the (b) FIT-centre
+# median from diag-r10 (fit_task4.py): per-tier earned growth
+# (platinum 2.00, gold 2.00, silver 1.70, bronze 1.00) times STORY_MULT
+# (1.10) for the story trophies (ids 3-13: story_set UNION ahead_set
+# from story_trophy_ids(), i.e. the frontier cohort plus the Chapter
+# trophy ahead of it -- both get the same story multiplier here, unlike
+# round 8's three separate factors). The p00/p01 split is by TARGET
+# TIME: FIRST_REFRESH_AT is 04:30Z (RULES.txt: the first refresh); a
+# target at or before it is the first refresh (tracked 3,868), a target
+# after it (p01, 05:00Z) is the SECOND refresh -- tracked
+# SECOND_REFRESH_TRACKED (4,000) with earned grown a further
+# SECOND_REFRESH_K (1.20x). These are the probe's BET (part of the
+# (b) hypothesis), not established facts; see the module docstring.
+# The spread stays the round-8 razor: GAMBLE_SIGMA = 0.03 logit.
+G_TIER = {"platinum": 2.00, "gold": 2.00, "silver": 1.70, "bronze": 1.00}
+STORY_MULT = 1.10
+SECOND_REFRESH_K = 1.20
+SECOND_REFRESH_TRACKED = 4000
+FIRST_REFRESH_AT = "2026-11-19T04:30:00Z"
 GAMBLE_SIGMA = 0.03
 FIRST_REFRESH_MAX_HORIZON_MIN = 360
 
@@ -421,9 +450,9 @@ def story_trophy_ids(trophies, earned):
     launch-night page the frontier is E=7 (ids 4..13) and the only
     Chapter trophy ahead of it is Chapter 1 (id 3, E=8). The
     frontier cohort grows ~2x by the first refresh (players keep
-    advancing the story); the rest grow ~1.1x; the ahead trophy's
-    growth is not identified by the server numbers, so it gets its
-    own factor (the posterior mean, see GROWTH_CHAPTER1).
+    advancing the story); the rest grow ~1.1x. Round 10 applies the
+    same story multiplier (STORY_MULT) to both the frontier cohort
+    and the ahead trophy -- both are story trophies (ids 3-13).
     """
     chap = [t["id"] for t in trophies
             if "chapter" in t.get("description", "").lower()]
@@ -585,9 +614,18 @@ def forecast_case(case):
     # round 4's byte-for-byte.
     first_refresh = (flat_page and not events and
                      case["horizon_minutes"] <= FIRST_REFRESH_MAX_HORIZON_MIN)
-    tracked_target_first = (float(last_tracked) *
-                            (FIRST_REFRESH_TRACKED / FIRST_REFRESH_BASE)
-                            if first_refresh else None)
+    # Round 10: p00 vs p01 is decided by the TARGET TIME, not the case
+    # id. The first refresh lands at 04:30Z (FIRST_REFRESH_AT); a
+    # target after it is the second refresh (p01, 05:00Z).
+    second_refresh = (first_refresh and
+                      parse_ts(case["target"]) > parse_ts(FIRST_REFRESH_AT))
+    if second_refresh:
+        tracked_target_first = float(SECOND_REFRESH_TRACKED)
+    elif first_refresh:
+        tracked_target_first = (float(last_tracked) *
+                                (FIRST_REFRESH_TRACKED / FIRST_REFRESH_BASE))
+    else:
+        tracked_target_first = None
     story_set = None
     ahead_set = None
     if first_refresh:
@@ -787,30 +825,36 @@ def forecast_case(case):
             med_b = clamp_pct(100.0 * e_branch / t_branch)
         fr_gap = 0.0
         if first_refresh:
-            # Round 8 (the gamble): the first refresh dilutes the page
-            # AND the earned counts grow by three factors -- the
-            # frontier cohort (story_set, ids 4..13 on the launch
-            # page) at GROWTH_STORY, the Chapter trophy ahead of the
-            # frontier (ahead_set, id 3) at GROWTH_CHAPTER1 (the
-            # posterior mean over its unidentified range 1.00-2.00),
-            # everything else at GROWTH_OTHER. The recovered earned
-            # count is the anchor, not the rounded rate. The median is
-            # the posterior mean over the two-group posterior (exact
-            # answers, both server numbers as evidence); the spread is
-            # a uniform razor GAMBLE_SIGMA below.
+            # Round 10 (probe b): the first refresh dilutes the page
+            # AND the earned counts grow -- per-tier (G_TIER) times
+            # the story multiplier (STORY_MULT) for the story
+            # trophies (story_set UNION ahead_set, ids 3-13). The
+            # earned base is the FLOAT earned count implied by the
+            # printed rate (rate/100*tracked), NOT the recovered
+            # integer: the (b) fit in diag-r10 is defined on that
+            # float (E0 in fitlib), so only the float reproduces the
+            # FIT-centre medians exactly (loss 0.0060, max quantile
+            # diff 0.0). The recovered integer differs by the 2dp
+            # rounding of the printed rate (<=0.025 earners) and
+            # would shift the loss to 0.0067. Target at or before
+            # 04:30Z: median 100*E*g/3868; target after 04:30Z
+            # (second refresh): median 100*E*g*1.20/4000.
             if last_rate >= 99.99:
                 # Everybody holds it: earned stays equal to tracked.
                 med_b = 99.99
             else:
-                earned_base = recover_earned(last_rate, last_tracked)
-                if trophy["id"] in ahead_set:
-                    growth = GROWTH_CHAPTER1
-                elif trophy["id"] in story_set:
-                    growth = GROWTH_STORY
+                earned_base = last_rate / 100.0 * last_tracked
+                growth = G_TIER[trophy["tier"]] * (
+                    STORY_MULT
+                    if trophy["id"] in story_set or trophy["id"] in ahead_set
+                    else 1.0)
+                if second_refresh:
+                    med_b = clamp_pct(100.0 * earned_base * growth *
+                                      SECOND_REFRESH_K /
+                                      SECOND_REFRESH_TRACKED)
                 else:
-                    growth = GROWTH_OTHER
-                med_b = clamp_pct(100.0 * earned_base * growth /
-                                  tracked_target_first)
+                    med_b = clamp_pct(100.0 * earned_base * growth /
+                                      FIRST_REFRESH_TRACKED)
         fit_sd = math.sqrt((earned_resid.get(j, pool_resid)) ** 2 + t_resid ** 2)
         # Dilution spread: the tracked growth over the horizon is
         # G = log(t_branch / last_tracked); its logit cost is kappa*G,
@@ -837,13 +881,10 @@ def forecast_case(case):
         if last_rate >= 99.99:
             sigma_b = max(sigma_b, 1.0)
         if first_refresh:
-            # Round 8: the razor band. The median is the posterior
-            # mean and the spread is a uniform 0.03 logit -- the
-            # gamble that the truth sits within ~0.02 logit of that
-            # median on almost every trophy. Where the median is
-            # wrong by more, the loss is the error itself; the band
-            # buys nothing. See the module docstring for the measured
-            # P(top 10) and the fragility to off-family deviations.
+            # Round 10: the razor band, kept from round 8. The median
+            # is the (b) FIT-centre median and the spread is a uniform
+            # 0.03 logit -- the probe that the truth sits within
+            # ~0.02 logit of that median on almost every trophy.
             sigma_b = GAMBLE_SIGMA
         rows.append({"id": trophy["id"],
                      "rate_a": clamp_pct(last_rate),
@@ -868,6 +909,7 @@ def forecast_case(case):
             "pool_b": pool_b,
             "t_branch": t_branch if rows else None,
             "first_refresh": first_refresh,
+            "second_refresh": second_refresh,
             "tracked_target_first": tracked_target_first,
             "story_set": sorted(story_set) if story_set else None,
         })

@@ -66,7 +66,7 @@ tracked separately, then divides.
   linear median (weight 0.3), spread from their disagreement.
   Posterior expectation ~0.050, worst ~0.087. Still ~3x above the
   top-10 line.
-- **Round 8 — the razor gamble (THIS VERSION):** the median is the
+- **Round 8 — the razor gamble:** the median is the
   POSTERIOR MEAN over the two-group posterior (weights
   exp(−L2²/2s²), s = 0.003, EXACT unrounded answer rates, both server
   numbers as evidence), expressed as three growth factors —
@@ -77,8 +77,60 @@ tracked separately, then divides.
   so its factor is the posterior mean, the hedge that halves the
   worst-case error on that trophy. The gate is unchanged (flat page +
   horizon ≤ 360 min), so the final runs round 4's logic byte-for-byte.
+- **Round 10 — probe (b) (THIS VERSION):** the first-refresh median
+  is the (b) FIT-centre median from diag-r10 (fit_task4.py,
+  TRUTHS['FIT-centre']): per-tier earned growth — platinum 2.00,
+  gold 2.00, silver 1.70, bronze 1.00 — times 1.10 for the story
+  trophies (ids 3–13: frontier cohort ∪ ahead trophy), on the earned
+  count implied by the printed launch-night rate. The p00/p01 split
+  is by TARGET TIME: target ≤ 04:30Z (first refresh) → median
+  100·E·g/3,868; target > 04:30Z (second refresh, p01 05:00Z) →
+  median 100·E·g·1.20/4,000. Spread stays the razor sigma = 0.03
+  logit; the 100% trophy (id 2) stays 99.99. The (b) family fits all
+  four server numbers with L2-4 = 0.0095 (102-point tolerance patch),
+  the best of any family tried — but it FAILS the no-lose gate
+  (under truths A/B/R/C it loses to round 4: 0.14–0.29 vs 0.095–
+  0.124), so this is a user-approved PROBE, not a gated model. Gate
+  unchanged (flat page + horizon ≤ 360 min); final still round 4
+  byte-for-byte.
 
-## Validation (round 8, measured on actual program outputs)
+## Validation (round 10, measured on actual program outputs)
+
+- **Practice loss under truth (b) FIT-centre (exact answers):**
+  p00 **0.005975**, p01 **0.005952**, mean **0.005964** — matches the
+  diag-r10 prediction 0.0060 (verify.py `score_forecast` and the dev
+  `score.py` agree to <1e-12). Below the old practice top-10 line
+  (0.0157), but ~10x above the current ~0.0006 line: a diagnostic
+  probe read, not a top-10 claim. If the truth is A/B/R/C the same
+  program scores 0.14–0.29 (per diag-r10), which is the probe's
+  signal.
+- **Program vs intended (b) medians:** the program's medians equal
+  the FIT-centre medians as real numbers (median column diff 0.0);
+  the only 4-decimal difference anywhere in the 55×5 quantiles is
+  **0.0001 on one value** (p01 id 35, median raw 0.23925 — an exact
+  half-boundary where the program's half-up `round4` gives 0.2393
+  and fitlib's half-even `np.round` gives 0.2392). One deviation
+  from the build brief, recorded here: the earned base is the FLOAT
+  earned count implied by the printed rate (`rate/100*tracked`),
+  not the recovered integer — the (b) fit in diag-r10 is defined on
+  that float (E0), and only the float reproduces the FIT-centre
+  medians exactly; the recovered integer would shift the loss to
+  0.0067 and the max quantile diff to 0.0011.
+- **Synthetic finals: byte-identical to round 4.** All 9 tuning +
+  all 9 fresh outputs diff-identical to round 4's, so tune stays
+  mean **0.338** / worst **0.498** and fresh stays **0.321** /
+  **0.474**, still beating trend (1.576 / 1.567) and flat (2.052 /
+  2.105) in all 18 cases. The first-refresh mode cannot fire there
+  (rich history, 6,510-min horizon). Gate check: horizon 360 min
+  fires the new mode; 361 and 500 min and a non-flat history are
+  byte-identical to round 4. Format ALL VALID, determinism
+  IDENTICAL (verify.py run --twice), runtime 0.06 s/case.
+- **Story sets (debug):** p00 `first_refresh=True,
+  second_refresh=False`, p01 `first_refresh=True,
+  second_refresh=True`; story_set = ids 4–13 on both, tracked target
+  3,868 / 4,000.
+
+## Validation (round 8, first-refresh mode superseded)
 
 - **Practice losses at key truths (exact answers):** at the best-fit
   point (1.97, 1.075, 2.00) **0.0122**; at the posterior-mean truth
